@@ -14,7 +14,7 @@ impl Drop for BunServer {
     }
 }
 
-fn wait_for_server(url: &str, max_attempts: u32) -> bool {
+fn wait_for_server(_url: &str, max_attempts: u32) -> bool {
     for _ in 0..max_attempts {
         if std::net::TcpStream::connect("127.0.0.1:3030").is_ok() {
             return true;
