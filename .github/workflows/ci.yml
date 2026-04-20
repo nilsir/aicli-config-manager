@@ -45,18 +45,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version and create tag if new
+      - name: Auto-increment version and create tag
         run: |
-          VERSION="v$(node -p "require('./package.json').version")"
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists, skipping"
-            echo "SKIP=true" >> $GITHUB_ENV
+          LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            VERSION="v1.0.0"
           else
-            echo "Creating tag $VERSION"
-            git tag "$VERSION"
-            git push origin "$VERSION"
-            echo "SKIP=false" >> $GITHUB_ENV
+            MAJOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f1)
+            MINOR=$(echo "$LATEST" | sed 's/v//' | cut -d. -f2)
+            PATCH=$(echo "$LATEST" | sed 's/v//' | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           fi
+          echo "Creating tag $VERSION"
+          git tag "$VERSION"
+          git push origin "$VERSION"
 
   release:
     needs: build-and-test
