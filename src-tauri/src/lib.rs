@@ -14,6 +14,16 @@ impl Drop for BunServer {
     }
 }
 
+fn wait_for_server(url: &str, max_attempts: u32) -> bool {
+    for _ in 0..max_attempts {
+        if std::net::TcpStream::connect("127.0.0.1:3030").is_ok() {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(300));
+    }
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -26,7 +36,6 @@ pub fn run() {
                 )?;
             }
 
-            // Start the Bun API server as a child process
             let resource_dir = app
                 .path()
                 .resource_dir()
@@ -54,6 +63,14 @@ pub fn run() {
                 Err(e) => {
                     log::error!("Failed to start Bun server: {}", e);
                 }
+            }
+
+            // Wait for server to be ready, then navigate the window to it
+            wait_for_server("127.0.0.1:3030", 20);
+
+            if let Some(window) = app.get_webview_window("main") {
+                let url = tauri::Url::parse("http://localhost:3030").unwrap();
+                let _ = window.navigate(url);
             }
 
             Ok(())
