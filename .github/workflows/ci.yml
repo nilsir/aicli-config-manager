@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -40,12 +39,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Auto-increment version and create tag
+        id: tag
         run: |
           LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
           if [ -z "$LATEST" ]; then
@@ -60,26 +62,22 @@ jobs:
           echo "Creating tag $VERSION"
           git tag "$VERSION"
           git push origin "$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   release:
-    needs: build-and-test
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: auto-tag
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             target: aarch64-apple-darwin
-            label: macOS-arm64
           - os: macos-13
             target: x86_64-apple-darwin
-            label: macOS-x64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            label: Linux-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            label: Windows-x64
 
     runs-on: ${{ matrix.os }}
     permissions:
@@ -112,8 +110,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
-          releaseBody: "See the [CHANGELOG](https://github.com/nilsir/aicli-config-manager/blob/main/CHANGELOG.md) for details."
+          tagName: ${{ needs.auto-tag.outputs.version }}
+          releaseName: ${{ needs.auto-tag.outputs.version }}
+          releaseBody: "Automated release for ${{ needs.auto-tag.outputs.version }}"
           releaseDraft: false
           prerelease: false
