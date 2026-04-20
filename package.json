@@ -24,7 +24,9 @@
     "build": "bun run --cwd web build",
     "start": "bun run server/index.ts",
     "prepublishOnly": "bun run build",
-    "test": "bun test"
+    "test": "bun test",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:build": "cargo tauri build"
   },
   "dependencies": {
     "concurrently": "^9.1.2",

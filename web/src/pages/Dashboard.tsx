@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 
+const API_BASE = (window as any).__TAURI__ ? "http://localhost:3030" : "";
+
 type Lang = "en" | "zh";
 const I18nContext = createContext<{ t: (key: string) => string; lang: Lang; setLang: (l: Lang) => void }>({
   t: (k) => k, lang: "en", setLang: () => {},
@@ -190,7 +192,7 @@ function MCPRow({
   const isDisabled = server.disabled || false;
 
   async function handleToggle() {
-    const res = await fetch(`/api/configs/${cliId}/mcp/${encodeURIComponent(server.name)}/toggle`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/api/configs/${cliId}/mcp/${encodeURIComponent(server.name)}/toggle`, { method: "POST" });
     if (res.ok) {
       showToast(`${server.name} ${isDisabled ? "enabled" : "disabled"}`, "success");
       onRefresh();
@@ -201,7 +203,7 @@ function MCPRow({
 
   async function handleDelete() {
     if (!confirm(`Delete MCP server "${server.name}"?`)) return;
-    const res = await fetch(`/api/configs/${cliId}/mcp/${encodeURIComponent(server.name)}/delete`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/api/configs/${cliId}/mcp/${encodeURIComponent(server.name)}/delete`, { method: "POST" });
     if (res.ok) {
       showToast(`${server.name} deleted`, "success");
       onRefresh();
@@ -213,7 +215,7 @@ function MCPRow({
   async function handleCheck() {
     setChecking(true);
     try {
-      const res = await fetch("/api/mcp/check", {
+      const res = await fetch(`${API_BASE}/api/mcp/check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: server.type, command: server.command, url: server.url }),
@@ -235,7 +237,7 @@ function MCPRow({
     if (server.url) mcpConfig.url = server.url;
     if (server.type === "http" || server.type === "sse") mcpConfig.type = server.type;
 
-    const res = await fetch(`/api/configs/${targetCliId}/mcp`, {
+    const res = await fetch(`${API_BASE}/api/configs/${targetCliId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: server.name, config: mcpConfig }),
@@ -304,7 +306,7 @@ function BackupsSection({ cliId, showToast, onRefresh }: { cliId: string; showTo
   const [loaded, setLoaded] = useState(false);
 
   async function loadBackups() {
-    const res = await fetch(`/api/configs/${cliId}/backups`);
+    const res = await fetch(`${API_BASE}/api/configs/${cliId}/backups`);
     if (res.ok) setBackups(await res.json());
     setLoaded(true);
   }
@@ -313,7 +315,7 @@ function BackupsSection({ cliId, showToast, onRefresh }: { cliId: string; showTo
 
   async function handleRestore(timestamp: number) {
     if (!confirm("Restore this backup? Current config will be backed up first.")) return;
-    const res = await fetch(`/api/configs/${cliId}/restore`, {
+    const res = await fetch(`${API_BASE}/api/configs/${cliId}/restore`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ timestamp }),
@@ -365,7 +367,7 @@ function ModelSection({ cliId, models, showToast, onRefresh }: {
   async function handleSwitch(model: string) {
     if (model === currentModel) return;
     setSwitching(true);
-    const res = await fetch(`/api/configs/${cliId}/model`, {
+    const res = await fetch(`${API_BASE}/api/configs/${cliId}/model`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),
@@ -520,7 +522,7 @@ function CLICard({ config, allConfigs, onRefresh, showToast }: { config: CLIConf
               onClick={async () => {
                 setLaunching(true);
                 try {
-                  const res = await fetch(`/api/launch/${config.id}`, { method: "POST" });
+                  const res = await fetch(`${API_BASE}/api/launch/${config.id}`, { method: "POST" });
                   if (res.ok) showToast(`${t("launch_success")}: ${config.name}`, "success");
                   else showToast(t("launch_error"), "error");
                 } catch { showToast(t("launch_error"), "error"); }
@@ -570,7 +572,7 @@ function ExportImportPanel({ configs, showToast, onRefresh }: { configs: CLIConf
   const { t } = useContext(I18nContext);
 
   async function handleExportAll() {
-    const res = await fetch("/api/export");
+    const res = await fetch(`${API_BASE}/api/export`);
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -583,7 +585,7 @@ function ExportImportPanel({ configs, showToast, onRefresh }: { configs: CLIConf
   }
 
   async function handleExportOne(cliId: string) {
-    const res = await fetch(`/api/export/${cliId}`);
+    const res = await fetch(`${API_BASE}/api/export/${cliId}`);
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -607,7 +609,7 @@ function ExportImportPanel({ configs, showToast, onRefresh }: { configs: CLIConf
         const data = JSON.parse(text);
         const snapshot = data.snapshot || (data.cliId ? { [data.cliId]: data.files } : null);
         if (!snapshot) { showToast("Invalid snapshot format", "error"); return; }
-        const res = await fetch("/api/import", {
+        const res = await fetch(`${API_BASE}/api/import`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ snapshot }),
@@ -666,11 +668,11 @@ function TemplatesPanel({ showToast, onRefresh }: { showToast: (msg: string, typ
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch("/api/mcp/templates").then((r) => r.json()).then(setTemplates).finally(() => setLoaded(true));
+    fetch(`${API_BASE}/api/mcp/templates`).then((r) => r.json()).then(setTemplates).finally(() => setLoaded(true));
   }, []);
 
   async function handleInstall(templateId: string, cliId: string) {
-    const res = await fetch("/api/mcp/templates/install", {
+    const res = await fetch(`${API_BASE}/api/mcp/templates/install`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ templateId, cliId }),
@@ -729,7 +731,7 @@ function HealthPanel() {
   async function runCheck() {
     setRunning(true);
     try {
-      const res = await fetch("/api/health-check", { method: "POST" });
+      const res = await fetch(`${API_BASE}/api/health-check`, { method: "POST" });
       const data = await res.json();
       setIssues(data.issues);
       setOk(data.ok);
@@ -796,7 +798,7 @@ function DiffPanel({ configs }: { configs: CLIConfig[] }) {
   async function runDiff() {
     if (!a || !b || a === b) return;
     setLoading(true);
-    const res = await fetch(`/api/diff?a=${a}&b=${b}`);
+    const res = await fetch(`${API_BASE}/api/diff?a=${a}&b=${b}`);
     if (res.ok) setResult(await res.json());
     setLoading(false);
   }
@@ -861,7 +863,7 @@ export default function Dashboard() {
   const fetchConfigs = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch("/api/configs");
+      const r = await fetch(`${API_BASE}/api/configs`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setConfigs(await r.json());
       setError(null);

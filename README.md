@@ -42,6 +42,7 @@ bunx aicli-config-manager
 - **多语言 UI**：支持中文 / English，自动跟随浏览器语言
 - **配置 Diff**：对比两个 CLI 之间的 MCP 服务器差异
 - **CLI 快捷启动**：一键在终端中启动 CLI 工具
+- **桌面应用**：基于 Tauri 打包为原生桌面应用（macOS .app / .dmg）
 - **VSCode 集成**：点击配置文件路径直接在 VSCode 中打开
 - **跨平台**：支持 macOS、Linux、Windows
 - **安全**：不会在 API 响应中暴露完整的认证令牌
@@ -54,6 +55,8 @@ bunx aicli-config-manager
 | `bun run build` | 构建前端产物 |
 | `bun run start` | 生产模式启动（需先 build） |
 | `bun test` | 运行测试 |
+| `bun run tauri:dev` | 启动 Tauri 桌面应用（开发模式） |
+| `bun run tauri:build` | 构建桌面应用安装包 |
 
 ## API
 
@@ -83,6 +86,7 @@ bunx aicli-config-manager
 - **前端**: React 19 + Vite + TypeScript
 - **样式**: Tailwind CSS（暗色主题）
 - **TOML 解析**: smol-toml
+- **桌面打包**: Tauri v2
 - **CI**: GitHub Actions
 
 ## 项目结构
@@ -98,6 +102,9 @@ bunx aicli-config-manager
 │       └── Dashboard.tsx  # 仪表盘主页面
 ├── tests/
 │   └── api.test.ts        # API 集成测试
+├── src-tauri/
+│   ├── tauri.conf.json    # Tauri 桌面应用配置
+│   └── src/               # Rust 入口（启动 Bun 后端 + WebView）
 ├── bin/
 │   └── start.js           # npx 入口
 └── .github/workflows/
