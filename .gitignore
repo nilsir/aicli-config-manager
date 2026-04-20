@@ -6,3 +6,30 @@ web/dist/
 *.log
 .sisyphus/
 src-tauri/target/
+.vscode/
+.idea/
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+Thumbs.db
+
+# Build outputs
+dist/
+out/
+build/
+
+# Lock files (optional)
+# package-lock.json
+# yarn.lock
+
+# Temp files
+*.tmp
+*.swp
+*~
+
+# Tauri
+src-tauri/WixTools/
+src-tauri/gen/
