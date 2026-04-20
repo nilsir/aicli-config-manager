@@ -480,6 +480,18 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     });
   }
 
+  if (path === "/api/open-in-editor" && method === "POST") {
+    const body = await req.json().catch(() => null);
+    const filePath = body?.path;
+    if (!filePath || typeof filePath !== "string") return err("Missing 'path'");
+    try {
+      Bun.spawn(["code", filePath], { stdout: "ignore", stderr: "ignore" });
+      return json({ ok: true });
+    } catch (e: any) {
+      return err(e.message, 500);
+    }
+  }
+
   // POST /api/launch/:cliId — open terminal with CLI command
   const launchMatch = path.match(/^\/api\/launch\/(\w+)$/);
   if (launchMatch && method === "POST") {

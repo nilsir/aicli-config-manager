@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 
-const API_BASE = (window as any).__TAURI__ ? "http://localhost:3030" : "";
+const API_BASE = window.location.port === "5173" || window.location.port === "3030" ? "" : "http://localhost:3030";
 
 type Lang = "en" | "zh";
 const I18nContext = createContext<{ t: (key: string) => string; lang: Lang; setLang: (l: Lang) => void }>({
@@ -430,10 +430,20 @@ function CLICard({ config, allConfigs, onRefresh, showToast }: { config: CLIConf
             <div className="min-w-0">
               <h3 className="text-lg font-semibold text-white truncate">{config.name}</h3>
               <a
-                href={`vscode://file${config.configPath}`}
-                className="text-xs text-gray-500 hover:text-violet-400 font-mono truncate block transition-colors"
+                href={API_BASE ? undefined : `vscode://file${config.configPath}`}
+                className="text-xs text-gray-500 hover:text-violet-400 font-mono truncate block transition-colors cursor-pointer"
                 title="Open in VSCode"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (API_BASE) {
+                    e.preventDefault();
+                    fetch(`${API_BASE}/api/open-in-editor`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ path: config.configPath }),
+                    });
+                  }
+                }}
               >
                 {config.configPath}
               </a>
@@ -868,8 +878,7 @@ export default function Dashboard() {
       setConfigs(await r.json());
       setError(null);
     } catch (e: any) {
-      const isTauri = !!(window as any).__TAURI__;
-      if (isTauri && retries < 10) {
+      if (API_BASE && retries < 10) {
         await new Promise((r) => setTimeout(r, 800));
         setLoading(false);
         return fetchConfigs(retries + 1);
