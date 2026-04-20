@@ -32,11 +32,11 @@ pub fn run() {
                 .resource_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-            // In dev mode, server files are at project root; in production, bundled in resources
+            // In dev mode, server files are at project root; in production, bundled in resources/_up_/
             let server_dir = if cfg!(debug_assertions) {
                 std::env::current_dir().unwrap_or_else(|_| resource_dir.clone())
             } else {
-                resource_dir
+                resource_dir.join("_up_")
             };
 
             let child = Command::new("bun")

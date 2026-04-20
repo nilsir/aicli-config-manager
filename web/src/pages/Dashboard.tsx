@@ -860,7 +860,7 @@ export default function Dashboard() {
 
   const t = useCallback((key: string) => translations[lang][key] || key, [lang]);
 
-  const fetchConfigs = useCallback(async () => {
+  const fetchConfigs = useCallback(async (retries = 0) => {
     setLoading(true);
     try {
       const r = await fetch(`${API_BASE}/api/configs`);
@@ -868,6 +868,12 @@ export default function Dashboard() {
       setConfigs(await r.json());
       setError(null);
     } catch (e: any) {
+      const isTauri = !!(window as any).__TAURI__;
+      if (isTauri && retries < 10) {
+        await new Promise((r) => setTimeout(r, 800));
+        setLoading(false);
+        return fetchConfigs(retries + 1);
+      }
       setError(e.message);
     }
     setLoading(false);
@@ -910,7 +916,7 @@ export default function Dashboard() {
               {lang === "en" ? "中文" : "EN"}
             </button>
             <button
-              onClick={fetchConfigs}
+              onClick={() => fetchConfigs()}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:border-violet-500/50 transition-colors text-sm"
             >
