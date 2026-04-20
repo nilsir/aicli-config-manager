@@ -8,7 +8,7 @@
 - Node.js >= 18（可选，用于 npx 启动）
 
 ```bash
-git clone https://github.com/user/aicli-config-manager.git
+git clone https://github.com/nilsir/aicli-config-manager.git
 cd aicli-config-manager
 bun install
 bun install --cwd web
