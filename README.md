@@ -17,6 +17,14 @@ bunx aicli-config-manager
 
 浏览器打开 http://localhost:3030
 
+### 桌面应用安装（macOS）
+
+从 [Releases](https://github.com/nilsir/aicli-config-manager/releases) 下载 `.dmg` 文件安装后，由于应用未经 Apple 签名，macOS 会提示"已损坏"或"无法验证开发者"。运行以下命令解除限制：
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/AI CLI Config Manager.app"
+```
+
 ## 支持的 CLI 工具
 
 | 工具 | 配置路径 | 读取内容 |

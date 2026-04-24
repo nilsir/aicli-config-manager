@@ -109,9 +109,16 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: "-"
         with:
           tagName: ${{ needs.auto-tag.outputs.version }}
           releaseName: ${{ needs.auto-tag.outputs.version }}
-          releaseBody: "Automated release for ${{ needs.auto-tag.outputs.version }}"
+          releaseBody: |
+            Automated release for ${{ needs.auto-tag.outputs.version }}
+
+            **macOS 用户**：安装后如提示"已损坏"，请运行：
+            ```
+            sudo xattr -rd com.apple.quarantine "/Applications/AI CLI Config Manager.app"
+            ```
           releaseDraft: false
           prerelease: false
