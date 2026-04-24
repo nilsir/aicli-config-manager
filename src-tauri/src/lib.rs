@@ -4,6 +4,27 @@ use tauri::Manager;
 
 struct BunServer(Mutex<Option<Child>>);
 
+/// Resolve the full path to `bun` binary.
+/// macOS GUI apps don't inherit the user's shell PATH, so we check common locations.
+fn find_bun() -> String {
+    let candidates = if cfg!(target_os = "windows") {
+        vec![]
+    } else {
+        let home = std::env::var("HOME").unwrap_or_default();
+        vec![
+            format!("{}/.bun/bin/bun", home),
+            "/usr/local/bin/bun".to_string(),
+            "/opt/homebrew/bin/bun".to_string(),
+        ]
+    };
+    for path in &candidates {
+        if std::path::Path::new(path).exists() {
+            return path.clone();
+        }
+    }
+    "bun".to_string()
+}
+
 impl Drop for BunServer {
     fn drop(&mut self) {
         if let Ok(mut guard) = self.0.lock() {
@@ -48,7 +69,8 @@ pub fn run() {
                 resource_dir.join("_up_")
             };
 
-            let child = Command::new("bun")
+            let bun = find_bun();
+            let child = Command::new(&bun)
                 .arg("run")
                 .arg("server/index.ts")
                 .current_dir(&server_dir)
