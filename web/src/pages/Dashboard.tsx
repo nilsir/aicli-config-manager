@@ -46,6 +46,14 @@ const translations: Record<Lang, Record<string, string>> = {
     launch: "Launch in Terminal",
     launch_success: "Launched",
     launch_error: "Failed to launch",
+    total_tokens: "Total Tokens",
+    token_usage: "Token Usage",
+    sessions: "Sessions",
+    messages: "Messages",
+    by_model: "By Model",
+    cache_read: "Cache Read",
+    input_tokens: "Input",
+    output_tokens: "Output",
   },
   zh: {
     title: "AI CLI 配置管理器",
@@ -85,6 +93,14 @@ const translations: Record<Lang, Record<string, string>> = {
     launch: "在终端中启动",
     launch_success: "已启动",
     launch_error: "启动失败",
+    total_tokens: "总 Token",
+    token_usage: "Token 用量",
+    sessions: "会话数",
+    messages: "消息数",
+    by_model: "按模型",
+    cache_read: "缓存读取",
+    input_tokens: "输入",
+    output_tokens: "输出",
   },
 };
 
@@ -96,6 +112,26 @@ interface MCPServer {
   args?: string[];
   env?: Record<string, string>;
   disabled?: boolean;
+}
+
+interface ModelTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  costUSD: number;
+}
+
+interface TokenUsage {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheCreationTokens: number;
+  totalCostUSD: number;
+  totalSessions: number;
+  totalMessages: number;
+  byModel: Record<string, ModelTokenUsage>;
+  lastComputedDate?: string;
 }
 
 interface CLIConfig {
@@ -111,6 +147,7 @@ interface CLIConfig {
   plugins?: string[];
   rawStats: Record<string, unknown>;
   rawConfig?: Record<string, unknown>;
+  tokenUsage?: TokenUsage;
 }
 
 interface BackupInfo {
@@ -412,6 +449,69 @@ function ModelSection({ cliId, models, showToast, onRefresh }: {
   );
 }
 
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function TokenUsageSection({ usage }: { usage: TokenUsage }) {
+  const { t } = useContext(I18nContext);
+  const [modelExpanded, setModelExpanded] = useState(false);
+  const modelEntries = Object.entries(usage.byModel);
+
+  return (
+    <div className="bg-gray-800/30 rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium text-gray-300">{t("token_usage")}</span>
+        {usage.lastComputedDate && (
+          <span className="text-xs text-gray-600">{usage.lastComputedDate}</span>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="text-center">
+          <div className="text-lg font-bold font-mono text-violet-400">{formatTokens(usage.totalInputTokens)}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{t("input_tokens")}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold font-mono text-violet-400">{formatTokens(usage.totalOutputTokens)}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{t("output_tokens")}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold font-mono text-violet-400">{formatTokens(usage.totalCacheReadTokens)}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{t("cache_read")}</div>
+        </div>
+      </div>
+      <div className="border-t border-gray-700/50 pt-3">
+        <div className="flex gap-4 text-xs text-gray-400">
+          <span>{t("sessions")}: <span className="text-gray-300 font-mono">{usage.totalSessions}</span></span>
+          <span>{t("messages")}: <span className="text-gray-300 font-mono">{usage.totalMessages}</span></span>
+        </div>
+      </div>
+      {modelEntries.length > 0 && (
+        <div className="border-t border-gray-700/50 pt-3">
+          <button
+            onClick={() => setModelExpanded(!modelExpanded)}
+            className="text-xs text-gray-500 hover:text-violet-400 transition-colors"
+          >
+            {t("by_model")} ({modelEntries.length}) {modelExpanded ? "▲" : "▼"}
+          </button>
+          {modelExpanded && (
+            <div className="mt-2 space-y-0">
+              {modelEntries.map(([model, mu]) => (
+                <div key={model} className="flex items-center justify-between text-xs py-1 border-b border-gray-700/30">
+                  <span className="text-gray-400 font-mono truncate max-w-[50%]">{model}</span>
+                  <span className="text-gray-500">{formatTokens(mu.inputTokens + mu.outputTokens)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CLICard({ config, allConfigs, onRefresh, showToast }: { config: CLIConfig; allConfigs: CLIConfig[]; onRefresh: () => void; showToast: (msg: string, type: "success" | "error") => void }) {
   const [expanded, setExpanded] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -476,6 +576,10 @@ function CLICard({ config, allConfigs, onRefresh, showToast }: { config: CLIConf
 
       {expanded && config.exists && (
         <div className="border-t border-gray-800 p-6 space-y-6">
+          {config.tokenUsage && (
+            <TokenUsageSection usage={config.tokenUsage} />
+          )}
+
           {config.mcpServers && config.mcpServers.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-gray-300 mb-3">MCP Servers</h4>
@@ -940,7 +1044,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: t("clis_detected"), value: detected, color: "text-violet-400" },
           { label: t("mcp_servers"), value: totalMcp, color: "text-blue-400" },
@@ -951,6 +1055,17 @@ export default function Dashboard() {
             <div className="text-xs text-gray-500 mt-1">{stat.label}</div>
           </div>
         ))}
+        {(() => {
+          const claudeWithTokens = configs.find((c) => c.id === "claude" && c.tokenUsage);
+          if (!claudeWithTokens?.tokenUsage) return null;
+          const { totalInputTokens, totalOutputTokens } = claudeWithTokens.tokenUsage;
+          return (
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center">
+              <div className="text-3xl font-bold text-amber-400">{formatTokens(totalInputTokens + totalOutputTokens)}</div>
+              <div className="text-xs text-gray-500 mt-1">{t("total_tokens")}</div>
+            </div>
+          );
+        })()}
       </div>
 
       {overlaps.length > 0 && (

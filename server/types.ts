@@ -13,6 +13,26 @@ export interface ModelInfo {
   name: string;
 }
 
+export interface ModelTokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  costUSD: number;
+}
+
+export interface TokenUsage {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheCreationTokens: number;
+  totalCostUSD: number;
+  totalSessions: number;
+  totalMessages: number;
+  byModel: Record<string, ModelTokenUsage>;
+  lastComputedDate?: string;
+}
+
 export interface CLIConfig {
   id: string;
   name: string;
@@ -26,6 +46,7 @@ export interface CLIConfig {
   plugins?: string[];
   rawStats: Record<string, unknown>;
   rawConfig?: Record<string, unknown>;
+  tokenUsage?: TokenUsage;
 }
 
 export interface BackupInfo {

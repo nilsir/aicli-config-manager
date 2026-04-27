@@ -1,4 +1,5 @@
 import { readFile } from "fs/promises";
+import { Database } from "bun:sqlite";
 import type { CLIConfig } from "../types";
 import { paths } from "../paths";
 
@@ -60,6 +61,53 @@ export async function readOpenCodeConfig(): Promise<CLIConfig> {
     };
   } catch {
     // file doesn't exist
+  }
+
+  try {
+    const db = new Database(paths.opencode.db, { readonly: true, create: false });
+    const rows = db.query<{ data: string }, []>(
+      `SELECT data FROM message 
+       WHERE json_extract(data, '$.role') = 'assistant' 
+       AND json_extract(data, '$.tokens.input') > 0`
+    ).all();
+    db.close();
+
+    let totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCost = 0;
+    const byModel: Record<string, any> = {};
+
+    for (const row of rows) {
+      const msg = JSON.parse(row.data);
+      const t = msg.tokens || {};
+      const model = msg.modelID || "unknown";
+      const inp = t.input || 0;
+      const out = t.output || 0;
+      const cr = t.cache?.read || 0;
+      const cost = msg.cost || 0;
+
+      totalInput += inp;
+      totalOutput += out;
+      totalCacheRead += cr;
+      totalCost += cost;
+
+      if (!byModel[model]) byModel[model] = { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0 };
+      byModel[model].inputTokens += inp;
+      byModel[model].outputTokens += out;
+      byModel[model].cacheReadInputTokens += cr;
+      byModel[model].costUSD += cost;
+    }
+
+    base.tokenUsage = {
+      totalInputTokens: totalInput,
+      totalOutputTokens: totalOutput,
+      totalCacheReadTokens: totalCacheRead,
+      totalCacheCreationTokens: 0,
+      totalCostUSD: totalCost,
+      totalSessions: 0,
+      totalMessages: rows.length,
+      byModel,
+    };
+  } catch {
+    // DB not available
   }
 
   return base;

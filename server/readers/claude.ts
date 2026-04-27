@@ -75,6 +75,42 @@ export async function readClaudeConfig(): Promise<CLIConfig> {
     };
 
     base.rawConfig = data;
+
+    try {
+      const statsRaw = await readFile(paths.claude.statsCache, "utf-8");
+      const stats = JSON.parse(statsRaw);
+      const modelUsage: Record<string, any> = stats.modelUsage || {};
+
+      let totalInput = 0, totalOutput = 0, totalCacheRead = 0, totalCacheCreate = 0, totalCost = 0;
+      const byModel: Record<string, any> = {};
+
+      for (const [model, usage] of Object.entries(modelUsage) as [string, any][]) {
+        totalInput += usage.inputTokens || 0;
+        totalOutput += usage.outputTokens || 0;
+        totalCacheRead += usage.cacheReadInputTokens || 0;
+        totalCacheCreate += usage.cacheCreationInputTokens || 0;
+        totalCost += usage.costUSD || 0;
+        byModel[model] = {
+          inputTokens: usage.inputTokens || 0,
+          outputTokens: usage.outputTokens || 0,
+          cacheReadInputTokens: usage.cacheReadInputTokens || 0,
+          cacheCreationInputTokens: usage.cacheCreationInputTokens || 0,
+          costUSD: usage.costUSD || 0,
+        };
+      }
+
+      base.tokenUsage = {
+        totalInputTokens: totalInput,
+        totalOutputTokens: totalOutput,
+        totalCacheReadTokens: totalCacheRead,
+        totalCacheCreationTokens: totalCacheCreate,
+        totalCostUSD: totalCost,
+        totalSessions: stats.totalSessions || 0,
+        totalMessages: stats.totalMessages || 0,
+        byModel,
+        lastComputedDate: stats.lastComputedDate,
+      };
+    } catch {}
   } catch {
     // file doesn't exist
   }

@@ -27,9 +27,11 @@ function xdgData(): string {
 export const paths = {
   claude: {
     settings: join(HOME, ".claude", "settings.json"),
+    statsCache: join(HOME, ".claude", "stats-cache.json"),
   },
   opencode: {
     config: join(xdgConfig(), "opencode", "opencode.json"),
+    db: join(xdgData(), "opencode", "opencode.db"),
   },
   gemini: {
     settings: join(HOME, ".gemini", "settings.json"),
